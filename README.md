@@ -1,5 +1,5 @@
-# MTOI lab 3
-Made by:
+# MTOI labs 1,2,3 and 5
+Developed by:
 * Кузьменко Кирилл
 * Донченко Іван
 * Орленко Антон
