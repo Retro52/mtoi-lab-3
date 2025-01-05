@@ -212,7 +212,7 @@ def golden_ratio_search(
     # Return the midpoint of our final bracket
     return 0.5 * (a + b)
 
-def train_neural_network_conjugate_gradient(X, y, num_hidden_neurons, epochs=100, tol=1e-6):
+def train_neural_network_conjugate_gradient(X, y, num_hidden_neurons, epochs=100, tol=1e-6, iter_change_dir = 20):
     input_dim = X.shape[1]
     output_dim = 1
     
@@ -252,13 +252,13 @@ def train_neural_network_conjugate_gradient(X, y, num_hidden_neurons, epochs=100
             W = W_new
             break
         
-        # Compute beta (Fletcher–Reeves)
-        beta = G_new_norm_sq / G_norm_sq
+        # Shuffle the direction each 'iter_change_dir' iterations to avoid being stuck at locals
+        if epoch % iter_change_dir == 0:
+            p = -G_new
+        else:
+            beta = G_new_norm_sq / G_norm_sq
+            p = -G_new + beta * p
         
-        # Update direction
-        p = -G_new + beta * p
-        
-        # Prepare next iteration
         W = W_new
         G = G_new
         G_norm_sq = G_new_norm_sq
@@ -538,6 +538,8 @@ def train_anfis(X, y, alpha=0.05, beta=0.1, gamma=0.05, epochs=1000):
         # Store the current epoch's predictions for plotting
         predicted_outputs.append(output.copy())
 
+    for arr in predicted_outputs:
+        print(arr[0])
     return predicted_outputs
 
 def plot_results(y_true, y_pred_gradient, y_pred_ga, y_pred_cg, y_pred_anfis, epoch):
@@ -609,7 +611,7 @@ def main():
     epochs = st.sidebar.number_input('Epochs (Gradient Descent):', min_value=1, value=1000, step=1)
 
     st.sidebar.write('### Genetic Algorithm Parameters')
-    generations     = st.sidebar.number_input('Generations (GA):', min_value=1,      value=100,  step=1)
+    generations     = st.sidebar.number_input('Generations (GA):', min_value=1,      value=1000, step=1)
     population_size = st.sidebar.number_input('Population Size:',  min_value=2,      value=50,   step=1)
     mutation_rate   = st.sidebar.number_input('Mutation Rate:',    min_value=0.0001, value=0.01, step=0.0001, format="%.4f")
 
@@ -646,12 +648,13 @@ def main():
         # Handle out-of-range indices
         epoch_gradient = min(epoch, len(st.session_state.predicted_outputs_gradient)-1)
         epoch_ga = min(epoch, len(st.session_state.predicted_outputs_ga)-1)
-        epoch_anfis = min(anfis_epochs, len(st.session_state.predicted_outputs_anfis)-1)
+        epoch_anfis = min(epoch, len(st.session_state.predicted_outputs_anfis)-1)
 
         y_pred_gradient = st.session_state.predicted_outputs_gradient[epoch_gradient]
         y_pred_cg = st.session_state.predicted_outputs_cg[epoch_gradient]
         y_pred_ga = st.session_state.predicted_outputs_ga[epoch_ga]
         y_pred_anfis = st.session_state.predicted_outputs_anfis[epoch_anfis]
+        print(y_pred_anfis)
 
         plot_results(st.session_state.y, y_pred_gradient, y_pred_ga, y_pred_cg, y_pred_anfis, epoch)
     else:
