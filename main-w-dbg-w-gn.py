@@ -6,14 +6,16 @@ import plotly.graph_objs as go
 
 g_seed: int = 52
 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
 def generate_data(num_samples, num_inputs):
     X = np.random.rand(num_samples, num_inputs)  # Generate random data
-    y = (np.sin(np.sum(X, axis=1)) + np.cos(np.prod(X, axis=1))).reshape(num_samples, 1)
+    y = (np.sin(np.sum(X, axis=1))).reshape(num_samples, 1)
+    # y = (np.sin(np.sum(X, axis=1)) + np.cos(np.prod(X, axis=1))).reshape(num_samples, 1)
     y = (y - np.min(y)) / (np.max(y) - np.min(y))
     return X, y
+
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
 
 def train_neural_network_gradient(X, y, num_hidden_neurons, epochs=10000, learning_rate=0.5):
     input_layer_neurons = X.shape[1]  # Number of features
@@ -143,7 +145,7 @@ def forward_and_gradient(W_flat, input_dim, num_hidden_neurons, X, y):
     
     # Backprop to get gradient
     # Output layer delta
-    d_out = error * prediction * (1 - prediction)  # shape: (num_samples, 1)
+    d_out = -2 * error * prediction * (1 - prediction)  # shape: (num_samples, 1)
     
     # Hidden layer delta
     error_hidden = d_out.dot(w_ho.T)  # shape: (num_samples, num_hidden_neurons)
@@ -212,7 +214,7 @@ def golden_ratio_search(
     # Return the midpoint of our final bracket
     return 0.5 * (a + b)
 
-def train_neural_network_conjugate_gradient(X, y, num_hidden_neurons, epochs=100, tol=1e-6, iter_change_dir = 20):
+def train_neural_network_conjugate_gradient(X, y, num_hidden_neurons, epochs=100, tol=1e-6, iter_change_dir=5, min_alpha=1e-3):
     input_dim = X.shape[1]
     output_dim = 1
     
@@ -234,7 +236,7 @@ def train_neural_network_conjugate_gradient(X, y, num_hidden_neurons, epochs=100
             num_hidden_neurons=num_hidden_neurons,
             X=X,
             y=y,
-            a=1e-8,      # can be smaller or bigger as needed
+            a=min_alpha, # can be smaller or bigger as needed
             b=1.0,       # upper bound for alpha
             tol=1e-7,    # tolerance for golden search
             max_iters=500 # number of golden search steps
@@ -538,8 +540,6 @@ def train_anfis(X, y, alpha=0.05, beta=0.1, gamma=0.05, epochs=1000):
         # Store the current epoch's predictions for plotting
         predicted_outputs.append(output.copy())
 
-    for arr in predicted_outputs:
-        print(arr[0])
     return predicted_outputs
 
 def plot_results(y_true, y_pred_gradient, y_pred_ga, y_pred_cg, y_pred_anfis, epoch):
@@ -601,19 +601,22 @@ def main():
     np.random.seed(g_seed)
     
     st.title('Neural Network Training Comparison')
-
-    num_samples        = st.sidebar.number_input('Samples:',        min_value=1,      value=100, step=1)
-    num_inputs         = st.sidebar.number_input('Inputs (count):', min_value=1,      value=3,   step=1)
-    num_hidden_neurons = st.sidebar.number_input('Hidden neurons:', min_value=1,      value=4,   step=1)
-    learning_rate      = st.sidebar.number_input('Learning rate:',  min_value=0.0001, value=0.5, step=0.0001, format="%.4f")
-
-    st.sidebar.write('### Gradient Descent Parameters')
-    epochs = st.sidebar.number_input('Epochs (Gradient Descent):', min_value=1, value=1000, step=1)
+    num_samples        = st.sidebar.number_input('Samples:',        min_value=1,      value=100,  step=1)
+    num_inputs         = st.sidebar.number_input('Inputs (count):', min_value=1,      value=3,    step=1)
+    num_hidden_neurons = st.sidebar.number_input('Hidden neurons:', min_value=1,      value=4,    step=1)
+    learning_rate      = st.sidebar.number_input('Learning rate:',  min_value=0.0001, value=0.5,  step=0.0001, format="%.4f")
 
     st.sidebar.write('### Genetic Algorithm Parameters')
     generations     = st.sidebar.number_input('Generations (GA):', min_value=1,      value=1000, step=1)
     population_size = st.sidebar.number_input('Population Size:',  min_value=2,      value=50,   step=1)
     mutation_rate   = st.sidebar.number_input('Mutation Rate:',    min_value=0.0001, value=0.01, step=0.0001, format="%.4f")
+
+    st.sidebar.write('### Gradient Descent Parameters')
+    epochs = st.sidebar.number_input('Epochs (Gradient Descent):', min_value=1, value=1000, step=1)
+
+    st.sidebar.write('### Conjugate Algorithm Parameters')
+    cg_dir_change = st.sidebar.number_input('Epochs before dir change:', min_value=1,        value=20,     step=1)
+    cg_min_alpha  = st.sidebar.number_input('Min alpha value:',          min_value=0.0,      value=1e-4,   step=1e-5, format="%.6f")
 
     st.sidebar.write('### ANFIS Parameters')
     alpha_val    = st.sidebar.number_input('Alpha (membership centers)', min_value=0.0001, value=0.05, step=0.0001, format="%.4f")
@@ -629,7 +632,7 @@ def main():
 
         predicted_outputs_gradient = train_neural_network_gradient(X, y, int(num_hidden_neurons), int(epochs), learning_rate)
         predicted_outputs_ga       = train_neural_network_ga(X, y, int(num_hidden_neurons), int(generations), int(population_size), mutation_rate)
-        predicted_outputs_cg       = train_neural_network_conjugate_gradient(X, y, int(num_hidden_neurons), epochs=int(epochs), tol=1e-6)
+        predicted_outputs_cg       = train_neural_network_conjugate_gradient(X, y, int(num_hidden_neurons), epochs=int(epochs), tol=1e-6, iter_change_dir=cg_dir_change, min_alpha=cg_min_alpha)
         predicted_outputs_anfis    = train_anfis(X, y, alpha=alpha_val, beta=beta_val, gamma=gamma_val, epochs=int(anfis_epochs))
 
         st.session_state.X = X
@@ -654,7 +657,6 @@ def main():
         y_pred_cg = st.session_state.predicted_outputs_cg[epoch_gradient]
         y_pred_ga = st.session_state.predicted_outputs_ga[epoch_ga]
         y_pred_anfis = st.session_state.predicted_outputs_anfis[epoch_anfis]
-        print(y_pred_anfis)
 
         plot_results(st.session_state.y, y_pred_gradient, y_pred_ga, y_pred_cg, y_pred_anfis, epoch)
     else:
