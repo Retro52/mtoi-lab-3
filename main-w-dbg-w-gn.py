@@ -259,14 +259,8 @@ def train_neural_network_conjugate_gradient(X, y, num_hidden_neurons, epochs=100
         predicted_outputs.append(final_output.copy())
     
     return predicted_outputs
-def train_anfis(X, y, alpha=0.05, beta=0.1, gamma=0.05, epochs=1000):
-    """
-    Vectorized version of ANFIS training with 2 Gaussian MFs per input dimension and 2 rules.
-    """
-    # X shape: (num_samples, 2)
-    # y shape: (num_samples, 1) or (num_samples,)
 
-    # --- Parameter initialization ---
+def train_anfis(X, y, alpha=0.05, beta=0.1, gamma=0.05, epochs=1000):
     cA1, cA2 = 0.25, 0.75
     sA1, sA2 = 0.1, 0.1
 
@@ -276,12 +270,11 @@ def train_anfis(X, y, alpha=0.05, beta=0.1, gamma=0.05, epochs=1000):
     a1, b1, r1 = 0.1, 0.1, 0.0
     a2, b2, r2 = 0.1, 0.1, 0.0
 
-    num_samples = X.shape[0]
     y = y.reshape(-1, 1)  # ensure column vector
 
-    # --- Helper: Gaussian membership function ---
+    # helper - gaussian membership function
     def gauss_mf(x, c, s):
-        # +1e-12 in the denominator to avoid numerical issues
+        # +1e-12 in the denominator to avoid division by 0
         return np.exp(-((x - c) ** 2) / (s**2 + 1e-12))
 
     predicted_outputs = []
